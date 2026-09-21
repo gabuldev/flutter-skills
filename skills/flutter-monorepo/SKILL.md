@@ -189,7 +189,7 @@ class AppWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return FlutterInjectionsWidget(
       injections: CoreInjections.core(),
-      child: MaterialApp(
+      builder: (_) => MaterialApp(
         debugShowCheckedModeBanner: false,
         onGenerateRoute: AppRoutes.onGenerateRoute,
         initialRoute: '/',

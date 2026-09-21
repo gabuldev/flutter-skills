@@ -15,7 +15,7 @@ FlutterInjectionsWidget (root, in AppWidget)
        ├── eventBus()
        └── ...
 
-FlutterInjectionsScope (per-module, lazy)
+FlutterModule (per-module, lazy)
   └── HomeModule.injections        ← scoped to module lifetime
        ├── HomeController
        └── HomeConsumer
@@ -60,30 +60,33 @@ class CoreInjections {
 
 File: `modules/<module_name>/<module_name>_module.dart`
 
+Extend **`FlutterModule`** and override its two getters, `injections` and
+`child`. `FlutterModule` is a `StatelessWidget` that wraps its `child` in a
+`FlutterInjectionsWidget` for you — don't build that wrapper by hand.
+
 ```dart
-class <ModuleName>Module extends StatelessWidget {
+class <ModuleName>Module extends FlutterModule {
   const <ModuleName>Module({super.key});
 
+  @override
   List<Inject<Object>> get injections => [
-    Inject<<ModuleName>Controller>.lazySingleton(
-      (i) => <ModuleName>Controller(
-        Get<ModuleName>Usecase(i.find<<ModuleName>Repository>()),
-      ),
-    ),
-  ];
+        Inject<<ModuleName>Controller>.lazySingleton(
+          (i) => <ModuleName>Controller(
+            Get<ModuleName>Usecase(i.find<<ModuleName>Repository>()),
+          ),
+        ),
+      ];
 
   @override
-  Widget build(BuildContext context) {
-    return FlutterInjectionsScope(
-      injections: injections,
-      child: BlocProvider(
+  Widget get child => BlocProvider(
         create: (_) => FlutterInjections.get<<ModuleName>Controller>(),
         child: const <ModuleName>Screen(),
-      ),
-    );
-  }
+      );
 }
 ```
+
+Both getters are `@override` — they are abstract on `FlutterModule`, so
+omitting either is a compile error rather than a silent no-op.
 
 ## Step 3: Resolve dependencies
 

@@ -239,27 +239,23 @@ import 'package:app_core/domain/repositories/<module_name>_repository.dart';
 import 'presentation/<module_name>_controller.dart';
 import 'presentation/<module_name>_screen.dart';
 
-class <ModuleName>Module extends StatelessWidget {
+class <ModuleName>Module extends FlutterModule {
   const <ModuleName>Module({super.key});
 
+  @override
   List<Inject<Object>> get injections => [
-    Inject<<ModuleName>Controller>.lazySingleton(
-      (i) => <ModuleName>Controller(
-        Get<ModuleName>Usecase(i.find<<ModuleName>Repository>()),
-      ),
-    ),
-  ];
+        Inject<<ModuleName>Controller>.lazySingleton(
+          (i) => <ModuleName>Controller(
+            Get<ModuleName>Usecase(i.find<<ModuleName>Repository>()),
+          ),
+        ),
+      ];
 
   @override
-  Widget build(BuildContext context) {
-    return FlutterInjectionsScope(
-      injections: injections,
-      child: BlocProvider(
-        create: (context) => FlutterInjections.get<<ModuleName>Controller>(),
+  Widget get child => BlocProvider(
+        create: (_) => FlutterInjections.get<<ModuleName>Controller>(),
         child: const <ModuleName>Screen(),
-      ),
-    );
-  }
+      );
 }
 ```
 
