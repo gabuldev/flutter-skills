@@ -10,6 +10,11 @@ answer is a convention rather than a fact the model can look up: which layer a
 file belongs in, how a Cubit should emit, where a browser-only import will blow
 up your test suite.
 
+> **See them working:** [**flutter-skills-example**](https://github.com/gabuldev/flutter-skills-example)
+> is a small, complete app built with every convention here — Melos workspace,
+> Clean Architecture, Cubit, offline-first caching, 27 tests, green in CI.
+> Each skill below has a file there you can open.
+>
 > **Using the official skills too?** The Flutter and Dart teams publish their
 > own — see [Related official skills](#related-official-skills). They cover
 > different ground and are designed to sit alongside these.

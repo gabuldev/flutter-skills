@@ -129,8 +129,16 @@ class AppRouteNames {
 }
 
 // app_routes.dart — re-exports the names, and owns the table
-class AppRoutes extends AppRouteNames { ... }
+export 'app_route_names.dart';
+
+class AppRoutes { /* onGenerateRoute + the table */ }
 ```
+
+Re-export at the **library** level, with `export`. Do not try to inherit the
+names (`class AppRoutes extends AppRouteNames`): Dart does not inherit static
+members, so `AppRoutes.login` would not resolve even when it compiles — and if
+the names class is `final`, extending it is a compile error outright. Callers
+say `AppRouteNames.login`; the `export` is what saves them a second import.
 
 Screens and the root widget may import the table. A use case, a repository or
 an interceptor may not — they take the names file.
