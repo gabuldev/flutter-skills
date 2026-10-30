@@ -5,7 +5,7 @@ generalised so you can drop them into your own project.
 
 A [skill](https://docs.claude.com/en/docs/claude-code/skills) is a folder with a
 `SKILL.md` that Claude loads **on demand**, when the task at hand matches its
-description. These fifteen cover the parts of a Flutter codebase where the
+description. These sixteen cover the parts of a Flutter codebase where the
 answer is a convention rather than a fact the model can look up: which layer a
 file belongs in, how a Cubit should emit, where a browser-only import will blow
 up your test suite.
@@ -76,6 +76,7 @@ up on its own from the description; you can also invoke one directly by name.
 | [`flutter-testing`](skills/flutter-testing/SKILL.md) | Unit, widget and `bloc_test` patterns with mocktail, plus Maestro E2E flows |
 | [`flutter-run`](skills/flutter-run/SKILL.md) | Flavors, `--dart-define`/`--dart-define-from-file`, device selection, and a task runner that keeps them in sync |
 | [`flutter-web`](skills/flutter-web/SKILL.md) | The web-only traps: rAF throttling in background tabs, `@TestOn('browser')`, `js_interop` behind an interface, blank-page rebuilds |
+| [`flutter-store-cd`](skills/flutter-store-cd/SKILL.md) | One `v*` tag to TestFlight and Google Play with GitHub Actions: ready workflows, Android keystore and iOS manual signing on CI, build numbers, and the store traps (draft apps, SDK 409, Play App Signing fingerprints, first subscriptions) |
 
 ## What these assume
 
