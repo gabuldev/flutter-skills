@@ -1,0 +1,131 @@
+# Android build and upload to Google Play.
+#
+# Runs on ubuntu: the Linux runner already has the Android SDK and a JDK, and
+# bills at 1x. A macOS runner bills at 10x for a build that needs no Xcode.
+#
+# Fires on the same `v*` tag as the iOS workflow, so both stores get the same
+# version. `workflow_dispatch` lets you iterate on Android alone without
+# spending macOS minutes.
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   ANDROID_KEYSTORE_BASE64      upload keystore (.jks), base64
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+#   PLAY_SERVICE_ACCOUNT_JSON    service account JSON with Play Console access
+#
+# Create the upload keystore once, and back it up. Losing it means a key reset
+# request to Google before you can ship again:
+#   keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 \
+#     -validity 10000 -alias upload
+#
+# Base64 it straight to the clipboard, so the key never lands in shell history:
+#   macOS   base64 -i upload.jks | pbcopy
+#   Linux   base64 -w0 upload.jks | xclip -selection clipboard
+# (macOS base64 is BSD: no `-w`, and its output is already one line.)
+
+name: Android - Play Store
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      FLUTTER_VERSION: 3.38.3          # pin it; match your local FVM version
+      APP_DIR: .                       # folder with pubspec.yaml (e.g. app, apps/my_app)
+      PACKAGE_NAME: com.example.app    # Android applicationId
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # AGP 8.x needs JDK 17.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: cd "$APP_DIR" && flutter pub get
+
+      # Gates before the build: seconds of work that keep a broken build out of
+      # the store. Add `dart test` / `dart analyze` for each local package too.
+      - name: Analyze
+        run: cd "$APP_DIR" && flutter analyze
+
+      - name: Test
+        run: cd "$APP_DIR" && flutter test
+
+      - name: Write keystore and key.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/upload.jks"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          # storeFile points outside the repo on purpose: the key never
+          # touches the working tree, so no later step can commit or upload it.
+          cat > "$APP_DIR/android/key.properties" <<PROPS
+          storeFile=$KEYSTORE
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+
+      # `flutter build`, not `./gradlew`: settings.gradle.kts reads
+      # `flutter.sdk` from local.properties, which flutter generates and which
+      # is not in the repo.
+      #
+      # The build number comes from the run counter, so it only ever goes up.
+      # Public SDK keys come from repository *variables*, not secrets.
+      - name: Build App Bundle
+        run: |
+          set -euo pipefail
+          cd "$APP_DIR"
+          flutter build appbundle --release \
+            --build-number="${{ github.run_number }}" \
+            --dart-define=APP_VERSION=${{ github.ref_name }}
+
+      # The very first upload of a new app must be done by hand in Play
+      # Console; until then the API refuses it.
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: ${{ env.APP_DIR }}/build/app/outputs/bundle/release/app-release.aab
+          # `tracks` (plural); the singular `track` is deprecated.
+          #
+          # Personal accounts created after 13 Nov 2023 also need `alpha`
+          # (closed testing): 12 testers for 14 days before production unlocks.
+          # Organization accounts don't, so `internal` is enough for them.
+          tracks: internal
+          # `draft` while the app has never been published: a draft app only
+          # accepts draft releases ("Only releases with status draft may be
+          # created on draft app"). Switch to `completed` right after the first
+          # publish, or every later release silently waits as a draft.
+          status: draft
+
+      - name: Keep the App Bundle
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: aab
+          path: ${{ env.APP_DIR }}/build/app/outputs/bundle/release/*.aab
+          if-no-files-found: warn
